@@ -1,112 +1,202 @@
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
+'use client';
 
-type Card = {
+import React, { useState, useEffect } from 'react';
+
+interface Card {
   id: number;
-  img: string;
+  imageUrl: string;
   isFlipped: boolean;
   isMatched: boolean;
-};
+}
 
-export default function MemoryGame() {
-  const [cards, setCards] = useState<Card[]>([]);
-  const [flippedCards, setFlippedCards] = useState<number[]>([]);
-  const [moves, setMoves] = useState(0);
-
-  const images = [
-    '/img/card1.jpg',
-    '/img/card2.jpg',
-    '/img/card3.jpg',
-    '/img/card4.jpg',
+const Jogo: React.FC = () => {
+  const imageUrls = [
+    '/images/card1.png',
+    '/images/card2.png',
+    '/images/card3.png',
+    '/images/card4.png',
+    '/images/card5.png',
+    '/images/card6.png',
+    '/images/card7.png',
+    '/images/card8.png',
+    '/images/card9.png',
   ];
 
-  useEffect(() => {
-    initializeGame();
-  }, []);
-
-  const initializeGame = () => {
-    const duplicatedImages = [...images, ...images];
-    const shuffledCards = duplicatedImages
-      .sort(() => Math.random() - 0.5)
-      .map((img, index) => ({
-        id: index,
-        img: img,
-        isFlipped: false,
-        isMatched: false,
-      }));
-
-    setCards(shuffledCards);
-    setFlippedCards([]);
-    setMoves(0);
+  const createCards = () => {
+    const cards: Card[] = [...imageUrls, ...imageUrls].map((url, index) => ({
+      id: index,
+      imageUrl: url,
+      isFlipped: false,
+      isMatched: false,
+    }));
+    return cards;
   };
 
-  const handleCardClick = (id: number) => {
-    if (flippedCards.length === 2 || cards[id].isFlipped || cards[id].isMatched) return;
+  const shuffleCards = (cards: Card[]) => {
+    return [...cards].sort(() => Math.random() - 0.5);
+  };
 
-    const newCards = [...cards];
-    newCards[id].isFlipped = true;
+  const [cards, setCards] = useState<Card[]>([]);
+  const [selectedCards, setSelectedCards] = useState<Card[]>([]);
+  const [score, setScore] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [hasWon, setHasWon] = useState(false);
+
+  useEffect(() => {
+    const initialCards = createCards();
+    setCards(shuffleCards(initialCards));
+  }, []);
+
+  const handleCardClick = (clickedCard: Card) => {
+    if (
+      isProcessing ||
+      selectedCards.length === 2 ||
+      clickedCard.isFlipped ||
+      clickedCard.isMatched
+    )
+      return;
+
+    const newCards = cards.map((card) =>
+      card.id === clickedCard.id ? { ...card, isFlipped: true } : card
+    );
+    
     setCards(newCards);
+    setSelectedCards([...selectedCards, newCards.find(card => card.id === clickedCard.id)!]);
+  };
 
-    const newFlippedCards = [...flippedCards, id];
-    setFlippedCards(newFlippedCards);
-
-    if (newFlippedCards.length === 2) {
-      setMoves(moves + 1);
+  useEffect(() => {
+    if (selectedCards.length === 2) {
+      setIsProcessing(true);
+      const [first, second] = selectedCards;
       
-      const [first, second] = newFlippedCards;
-      if (cards[first].img === cards[second].img) {
-        newCards[first].isMatched = true;
-        newCards[second].isMatched = true;
-        setCards(newCards);
-        setFlippedCards([]);
+      if (first.imageUrl === second.imageUrl) {
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === first.id || card.id === second.id
+              ? { ...card, isMatched: true }
+              : card
+          )
+        );
+        setScore((prev) => {
+          const newScore = prev + 1;
+          if (newScore === 9) {
+            setHasWon(true);
+          }
+          return newScore;
+        });
+        setIsProcessing(false);
       } else {
         setTimeout(() => {
-          newCards[first].isFlipped = false;
-          newCards[second].isFlipped = false;
-          setCards(newCards);
-          setFlippedCards([]);
+          setCards((prev) =>
+            prev.map((card) =>
+              card.id === first.id || card.id === second.id
+                ? { ...card, isFlipped: false }
+                : card
+            )
+          );
+          setIsProcessing(false);
         }, 1000);
       }
+      setSelectedCards([]);
     }
+  }, [selectedCards]);
+
+  const resetGame = () => {
+    const newCards = createCards();
+    setCards(shuffleCards(newCards));
+    setSelectedCards([]);
+    setScore(0);
+    setIsProcessing(false);
+    setHasWon(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-bold text-white text-center mb-4">
-          Jogo da Memória
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-5xl font-bold text-center text-white mb-8 drop-shadow-lg">
+          Joguinho da Memória Pa Voce Tonton
         </h1>
         
-        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 mb-6">
-          <p className="text-white text-xl text-center">
-            Movimentos: {moves}
+        {hasWon && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50"
+          onClick={() => setHasWon(false)}
+        >
+          <h2 className="text-6xl font-bold text-yellow-300 mb-8 animate-bounce drop-shadow-lg">
+            GANHOU PORRAAAA!!! 🎉
+          </h2>
+          <div className="relative">
+            <iframe 
+              src="https://giphy.com/embed/l0HlxRrCYYFVVfwWY" 
+              width="480" 
+              height="269" 
+              className="giphy-embed rounded-lg shadow-2xl"
+              frameBorder="0" 
+              allowFullScreen
+            />
+          </div>
+          <p className="text-white mt-4 text-xl">
+            Clique em qualquer lugar para continuar
           </p>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+      )}
+        
+        <div className="text-2xl text-center text-white mb-8 font-semibold drop-shadow-lg">
+          Pares encontrados: {score}/9
+        </div>
+        
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 mb-8">
           {cards.map((card) => (
             <div
               key={card.id}
-              className="aspect-square relative cursor-pointer"
-              onClick={() => handleCardClick(card.id)}
+              onClick={() => handleCardClick(card)}
+              className={`
+                aspect-square cursor-pointer transform hover:scale-105 transition-all duration-300
+                ${isProcessing ? 'pointer-events-none' : 'pointer-events-auto'}
+                hover:z-10
+              `}
             >
               <div
-                className={`w-full h-full transition-all duration-500 transform-gpu preserve-3d
-                  ${card.isFlipped ? 'rotate-y-180' : ''}`}
+                className={`
+                  relative w-full h-full transition-all duration-500
+                  transform-gpu ${card.isFlipped ? '[transform:rotateY(180deg)]' : ''}
+                  rounded-xl
+                  [perspective:1000px]
+                `}
+                style={{ transformStyle: 'preserve-3d' }}
               >
                 {/* Frente da carta */}
-                <div className="absolute w-full h-full bg-white rounded-xl flex items-center justify-center text-3xl font-bold text-purple-500 shadow-lg backface-hidden">
+                <div
+                  className={`
+                    absolute w-full h-full
+                    bg-gradient-to-br from-white/95 to-white/85 backdrop-blur-sm
+                    flex items-center justify-center
+                    text-3xl font-bold text-blue-600
+                    border-4 border-blue-300/50
+                    hover:border-blue-400/70 transition-colors
+                    shadow-lg rounded-xl
+                    [backface-visibility:hidden]
+                  `}
+                >
                   ?
                 </div>
                 
                 {/* Verso da carta */}
-                <div className="absolute w-full h-full rounded-xl overflow-hidden rotate-y-180 backface-hidden">
-                  <Image
-                    src={card.img}
+                <div
+                  className={`
+                    absolute w-full h-full
+                    ${card.isMatched ? 'bg-gradient-to-br from-green-100 to-green-200' : 'bg-white/95'}
+                    backdrop-blur-sm rounded-xl
+                    [transform:rotateY(180deg)]
+                    shadow-xl
+                    ${card.isMatched ? 'border-4 border-green-400/50' : ''}
+                    [backface-visibility:hidden]
+                  `}
+                >
+                  <img
+                    src={card.imageUrl}
                     alt="card"
-                    layout="fill"
-                    objectFit="cover"
-                    className="transform -scale-x-100"
+                    className="w-full h-full object-contain p-3"
                   />
                 </div>
               </div>
@@ -114,17 +204,25 @@ export default function MemoryGame() {
           ))}
         </div>
 
-        <div className="text-center">
-          <button
-            onClick={initializeGame}
-            className="px-6 py-3 bg-white text-purple-500 rounded-full font-semibold
-              shadow-lg hover:bg-purple-50 transform transition-all duration-200
-              hover:scale-105 active:scale-95"
-          >
-            Reiniciar Jogo
-          </button>
-        </div>
+        <button
+          onClick={resetGame}
+          className="
+            block mx-auto px-8 py-4
+            bg-gradient-to-r from-blue-600 to-purple-600
+            hover:from-blue-700 hover:to-purple-700
+            active:from-blue-800 active:to-purple-800
+            text-white text-xl font-bold rounded-xl
+            transform transition-all duration-200
+            hover:scale-105 active:scale-95
+            shadow-lg hover:shadow-xl
+            border-2 border-white/20 hover:border-white/30
+          "
+        >
+          Reiniciar Jogo
+        </button>
       </div>
     </div>
   );
-}
+};
+
+export default Jogo;
